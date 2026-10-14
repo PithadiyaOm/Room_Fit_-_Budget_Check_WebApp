@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Room Fit & Budget Check</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #eef1f3;
+    --card: #ffffff;
+    --ink: #1c2631;
+    --muted: #5d6b79;
+    --line: #cfd8df;
+    --grid: #dfe6ea;
+    --accent: #2f5d8a;
+    --accent-ink: #ffffff;
+    --safe: #2e7d5b;
+    --warn: #b06f12;
+    --danger: #b3382c;
+    --track: #e3e9ed;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #12181e; --card: #1b232b; --ink: #e7edf2; --muted: #98a6b3;
+      --line: #2e3b47; --grid: #212b34; --accent: #7fb0e0; --accent-ink: #0f1a24;
+      --safe: #56c28f; --warn: #e0a64a; --danger: #ef7b6e; --track: #26323c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #12181e; --card: #1b232b; --ink: #e7edf2; --muted: #98a6b3;
+    --line: #2e3b47; --grid: #212b34; --accent: #7fb0e0; --accent-ink: #0f1a24;
+    --safe: #56c28f; --warn: #e0a64a; --danger: #ef7b6e; --track: #26323c;
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  *, *::before, *::after { box-sizing: inherit; }
+  body {
+    margin: 0;
+    background-color: var(--paper);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 24px 24px;
+    color: var(--ink);
+    font-family: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 28px 18px 56px; }
+  h1 { font-size: clamp(1.7rem, 4vw, 2.4rem); line-height: 1.1; margin: 0 0 6px; letter-spacing: -0.02em; font-weight: 700; }
+  .lede { margin: 0 0 24px; color: var(--muted); max-width: 56ch; }
+  .layout { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 18px; align-items: start; }
+  @media (max-width: 800px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+  .stack { display: grid; gap: 18px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 18px; }
+  .card h2 { font-size: 1.05rem; margin: 0 0 12px; font-weight: 650; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .field { display: grid; gap: 4px; margin-bottom: 10px; }
+  .field label { font-size: 0.85rem; color: var(--muted); font-weight: 500; }
+  input[type="text"], input[type="number"], select {
+    width: 100%; font: inherit; color: var(--ink); background: var(--paper);
+    border: 1px solid var(--line); border-radius: 6px; padding: 9px 10px; min-width: 0;
+  }
+  input:focus-visible, select:focus-visible, button:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+  .check { display: flex; gap: 8px; align-items: flex-start; font-size: 0.9rem; margin: 2px 0 12px; }
+  .check input { margin-top: 4px; }
+  .check small { display: block; color: var(--muted); }
+  button {
+    font: inherit; font-weight: 600; cursor: pointer; border-radius: 6px; padding: 10px 14px;
+    border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink);
+  }
+  button.ghost { background: transparent; color: var(--accent); }
+  button.small { padding: 5px 9px; font-size: 0.85rem; }
+  button.danger-btn { background: transparent; color: var(--danger); border-color: var(--line); }
+  .full { width: 100%; }
+  .msg { min-height: 1.4em; margin: 10px 0 0; font-size: 0.9rem; font-weight: 500; }
+  .msg.err { color: var(--danger); }
+  .msg.ok { color: var(--safe); }
+
+  .meter { margin-bottom: 20px; }
+  .meter-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+  .meter-head strong { font-size: 1rem; }
+  .meter-head span { color: var(--muted); font-size: 0.9rem; }
+  .bar { display: flex; height: 22px; background: var(--track); border-radius: 5px; overflow: hidden; border: 1px solid var(--line); }
+  .seg { height: 100%; min-width: 2px; border-right: 1px solid var(--card); transition: width .25s ease; }
+  .status { display: inline-block; font-weight: 650; }
+  .status.safe { color: var(--safe); }
+  .status.warn { color: var(--warn); }
+  .status.danger { color: var(--danger); }
+  .bar.danger { border-color: var(--danger); }
+  .remain { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 8px; font-size: 0.9rem; color: var(--muted); }
+  .remain b { color: var(--ink); font-size: 1.05rem; }
+
+  .list { list-style: none; margin: 0; padding: 0; }
+  .item { display: grid; grid-template-columns: 14px 1fr auto; gap: 12px; align-items: center; padding: 11px 0; border-top: 1px solid var(--line); }
+  .item:first-child { border-top: 0; }
+  .dot { width: 12px; height: 12px; border-radius: 3px; }
+  .item .name { font-weight: 600; }
+  .item .meta { color: var(--muted); font-size: 0.88rem; }
+  .empty { color: var(--muted); margin: 0; }
+  .toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+  textarea { width: 100%; min-height: 140px; margin-top: 12px; font: 0.85rem/1.4 ui-monospace, Menlo, Consolas, monospace; background: var(--paper); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 10px; }
+  .hidden { display: none; }
+  @media (prefers-reduced-motion: reduce) { .seg { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Will it fit, and can you afford it?</h1>
+  <p class="lede">Enter your room and budget, then add furniture one piece at a time. Each addition is checked against the floor area, the room's actual dimensions, and your remaining money.</p>
+
+  <div class="layout">
+    <div class="stack">
+      <section class="card" aria-labelledby="room-h">
+        <h2 id="room-h">Your room</h2>
+        <div class="row">
+          <div class="field"><label for="room-length">Length (ft)</label><input id="room-length" type="number" min="0" step="0.1" inputmode="decimal"></div>
+          <div class="field"><label for="room-width">Width (ft)</label><input id="room-width" type="number" min="0" step="0.1" inputmode="decimal"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label for="room-budget">Budget</label><input id="room-budget" type="number" min="0" step="1" inputmode="decimal"></div>
+          <div class="field"><label for="currency">Currency</label>
+            <select id="currency"><option value="₹">₹ INR</option><option value="$">$ USD</option><option value="€">€ EUR</option><option value="£">£ GBP</option></select>
+          </div>
+        </div>
+        <p class="msg" id="room-msg" aria-live="polite"></p>
+      </section>
+
+      <section class="card" aria-labelledby="add-h">
+        <h2 id="add-h">Add a piece of furniture</h2>
+        <div class="field"><label for="item-name">Name</label><input id="item-name" type="text" placeholder="Work desk" maxlength="60"></div>
+        <div class="row">
+          <div class="field"><label for="item-length">Length (ft)</label><input id="item-length" type="number" min="0" step="0.1" inputmode="decimal"></div>
+          <div class="field"><label for="item-width">Width (ft)</label><input id="item-width" type="number" min="0" step="0.1" inputmode="decimal"></div>
+        </div>
+        <div class="field"><label for="item-price">Price</label><input id="item-price" type="number" min="0" step="1" inputmode="decimal"></div>
+        <label class="check"><input id="item-chair" type="checkbox"><span>Needs chair space<small>Adds 5 sq ft to its footprint for a pulled-out chair.</small></span></label>
+        <button class="full" id="add-btn" type="button">Add item</button>
+        <p class="msg" id="add-msg" aria-live="polite"></p>
+      </section>
+    </div>
+
+    <div class="stack">
+      <section class="card" aria-labelledby="dash-h">
+        <h2 id="dash-h">Live check</h2>
+
+        <div class="meter">
+          <div class="meter-head"><strong>Floor space</strong><span id="space-text">Set your room size</span></div>
+          <div class="bar" id="space-bar" role="img" aria-label="Floor space used"></div>
+          <div class="remain"><span>Left: <b id="space-left">–</b></span><span id="space-status" class="status"></span></div>
+        </div>
+
+        <div class="meter" style="margin-bottom:0">
+          <div class="meter-head"><strong>Budget</strong><span id="budget-text">Set your budget</span></div>
+          <div class="bar" id="budget-bar" role="img" aria-label="Budget used"></div>
+          <div class="remain"><span>Left: <b id="budget-left">–</b></span><span id="budget-status" class="status"></span></div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="list-h">
+        <h2 id="list-h">Checklist</h2>
+        <ul class="list" id="items"></ul>
+        <p class="empty" id="empty">Nothing added yet. Start with the biggest piece.</p>
+        <div class="toolbar">
+          <button class="ghost small" id="copy-btn" type="button">Copy shopping list</button>
+          <button class="danger-btn small" id="clear-btn" type="button">Clear all items</button>
+        </div>
+        <textarea id="export-box" class="hidden" readonly aria-label="Shopping list text"></textarea>
+        <p class="msg" id="list-msg" aria-live="polite"></p>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var STORE_KEY = "roomFitPlan.v1";
+  var CHAIR_SQFT = 5;
+  var room = { length: 0, width: 0, budget: 0, currency: "₹" };
+  var items = [];
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      if (!raw) return;
+      var data = JSON.parse(raw);
+      if (data && data.room && Array.isArray(data.items)) { room = data.room; items = data.items; }
+    } catch (e) {}
+  }
+  function save() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ room: room, items: items })); } catch (e) {}
+  }
+
+  function num(v) { var n = parseFloat(v); return isFinite(n) ? n : NaN; }
+  function fmt(n) { return (Math.round(n * 10) / 10).toLocaleString(undefined, { maximumFractionDigits: 1 }); }
+  function money(n) { return room.currency + Math.round(n).toLocaleString(); }
+  function area(it) { return it.l * it.w + (it.chair ? CHAIR_SQFT : 0); }
+  function totalArea() { return room.length * room.width; }
+  function usedArea() { return items.reduce(function (s, it) { return s + area(it); }, 0); }
+  function spent() { return items.reduce(function (s, it) { return s + it.price; }, 0); }
+  function color(i) { return "hsl(" + ((i * 47 + 205) % 360) + " 45% 50%)"; }
+
+  function setMsg(el, text, kind) { el.textContent = text || ""; el.className = "msg" + (kind ? " " + kind : ""); }
+
+  function readRoom() {
+    room.length = num($("room-length").value) || 0;
+    room.width = num($("room-width").value) || 0;
+    room.budget = num($("room-budget").value) || 0;
+    room.currency = $("currency").value;
+  }
+
+  function roomReady() { return room.length > 0 && room.width > 0; }
+
+  function statusFor(pct, hasLimit) {
+    if (!hasLimit) return { cls: "", text: "" };
+    if (pct > 100) return { cls: "danger", text: "Over the limit" };
+    if (pct >= 75) return { cls: "warn", text: "Getting tight" };
+    return { cls: "safe", text: "Comfortable" };
+  }
+
+  function drawBar(barEl, parts, total) {
+    barEl.innerHTML = "";
+    if (!(total > 0)) return;
+    var sum = 0;
+    parts.forEach(function (p) {
+      var seg = document.createElement("div");
+      seg.className = "seg";
+      var w = Math.min(100 - sum, (p.value / total) * 100);
+      if (w < 0) w = 0;
+      seg.style.width = w + "%";
+      seg.style.background = p.color;
+      seg.title = p.label;
+      barEl.appendChild(seg);
+      sum += w;
+    });
+  }
+
+  function updateDashboard() {
+    var ta = totalArea(), used = usedArea(), sp = spent();
+    var parts = items.map(function (it, i) { return { value: area(it), color: color(i), label: it.name }; });
+    var partsMoney = items.map(function (it, i) { return { value: it.price, color: color(i), label: it.name }; });
+
+    var spacePct = ta > 0 ? (used / ta) * 100 : 0;
+    var sSt = statusFor(spacePct, ta > 0);
+    $("space-text").textContent = ta > 0 ? fmt(used) + " of " + fmt(ta) + " sq ft (" + Math.round(spacePct) + "%)" : "Set your room size";
+    $("space-left").textContent = ta > 0 ? fmt(ta - used) + " sq ft" : "–";
+    $("space-status").textContent = sSt.text;
+    $("space-status").className = "status " + sSt.cls;
+    $("space-bar").className = "bar" + (sSt.cls === "danger" ? " danger" : "");
+    drawBar($("space-bar"), parts, ta);
+
+    var hasBudget = room.budget > 0;
+    var budPct = hasBudget ? (sp / room.budget) * 100 : 0;
+    var bSt = statusFor(budPct, hasBudget);
+    $("budget-text").textContent = hasBudget ? money(sp) + " of " + money(room.budget) + " (" + Math.round(budPct) + "%)" : "Set your budget";
+    $("budget-left").textContent = hasBudget ? money(room.budget - sp) : "–";
+    $("budget-status").textContent = bSt.text;
+    $("budget-status").className = "status " + bSt.cls;
+    $("budget-bar").className = "bar" + (bSt.cls === "danger" ? " danger" : "");
+    drawBar($("budget-bar"), partsMoney, room.budget);
+  }
+
+  function renderList() {
+    var ul = $("items");
+    ul.innerHTML = "";
+    $("empty").classList.toggle("hidden", items.length > 0);
+    items.forEach(function (it, i) {
+      var li = document.createElement("li");
+      li.className = "item";
+      var dot = document.createElement("span"); dot.className = "dot"; dot.style.background = color(i);
+      var mid = document.createElement("div");
+      var name = document.createElement("div"); name.className = "name"; name.textContent = it.name;
+      var meta = document.createElement("div"); meta.className = "meta";
+      meta.textContent = fmt(it.l) + " × " + fmt(it.w) + " ft, " + fmt(area(it)) + " sq ft" + (it.chair ? " incl. chair space" : "") + " · " + money(it.price);
+      mid.appendChild(name); mid.appendChild(meta);
+      var del = document.createElement("button");
+      del.type = "button"; del.className = "danger-btn small"; del.textContent = "Remove";
+      del.setAttribute("aria-label", "Remove " + it.name);
+      del.addEventListener("click", function () {
+        items.splice(i, 1); save(); refresh(); setMsg($("list-msg"), "Removed " + it.name + ".", "ok");
+      });
+      li.appendChild(dot); li.appendChild(mid); li.appendChild(del);
+      ul.appendChild(li);
+    });
+  }
+
+  function refresh() { updateDashboard(); renderList(); }
+
+  function addItem() {
+    var msg = $("add-msg");
+    setMsg(msg, "");
+    if (!roomReady()) { setMsg(msg, "Enter your room length and width first.", "err"); $("room-length").focus(); return; }
+    if (!(room.budget > 0)) { setMsg(msg, "Enter your budget first.", "err"); $("room-budget").focus(); return; }
+
+    var name = $("item-name").value.trim();
+    var l = num($("item-length").value), w = num($("item-width").value), p = num($("item-price").value);
+    var chair = $("item-chair").checked;
+
+    if (!name) { setMsg(msg, "Give the item a name.", "err"); $("item-name").focus(); return; }
+    if (!(l > 0) || !(w > 0)) { setMsg(msg, "Length and width must be greater than zero.", "err"); return; }
+    if (!(p >= 0)) { setMsg(msg, "Price can't be negative. Use 0 if you already own it.", "err"); $("item-price").focus(); return; }
+
+    var longSide = Math.max(l, w), shortSide = Math.min(l, w);
+    var roomLong = Math.max(room.length, room.width), roomShort = Math.min(room.length, room.width);
+    if (longSide > roomLong || shortSide > roomShort) {
+      setMsg(msg, name + " (" + fmt(l) + " × " + fmt(w) + " ft) is bigger than the room itself (" + fmt(room.length) + " × " + fmt(room.width) + " ft).", "err");
+      return;
+    }
+
+    var it = { id: Date.now() + Math.random(), name: name, l: l, w: w, price: p, chair: chair };
+    var newArea = area(it);
+    if (usedArea() + newArea > totalArea()) {
+      setMsg(msg, "Not enough space. This needs " + fmt(newArea) + " sq ft but only " + fmt(totalArea() - usedArea()) + " sq ft is left.", "err");
+      return;
+    }
+    if (spent() + p > room.budget) {
+      setMsg(msg, "Over budget by " + money(spent() + p - room.budget) + ".", "err");
+      return;
+    }
+
+    items.push(it);
+    save();
+    refresh();
+    setMsg(msg, "Added " + name + ".", "ok");
+    ["item-name", "item-length", "item-width", "item-price"].forEach(function (id) { $(id).value = ""; });
+    $("item-chair").checked = false;
+    $("item-name").focus();
+  }
+
+  function listText() {
+    var lines = ["Shopping list"];
+    items.forEach(function (it) {
+      lines.push("- " + it.name + " | " + fmt(it.l) + " x " + fmt(it.w) + " ft | " + room.currency + Math.round(it.price));
+    });
+    lines.push("Total: " + room.currency + Math.round(spent()) + " of " + room.currency + Math.round(room.budget));
+    lines.push("Floor space: " + fmt(usedArea()) + " of " + fmt(totalArea()) + " sq ft");
+    return lines.join("\n");
+  }
+
+  function copyList() {
+    var msg = $("list-msg"), box = $("export-box");
+    if (!items.length) { setMsg(msg, "Add something to the checklist first.", "err"); return; }
+    var text = listText();
+    box.value = text;
+    function showBox() {
+      box.classList.remove("hidden"); box.focus(); box.select();
+      setMsg(msg, "Select and copy the text below.", "ok");
+    }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () {
+          box.classList.add("hidden"); setMsg(msg, "Shopping list copied.", "ok");
+        }, showBox);
+      } else { showBox(); }
+    } catch (e) { showBox(); }
+  }
+
+  function onRoomInput() {
+    readRoom();
+    save();
+    updateDashboard();
+    var msg = $("room-msg");
+    if (roomReady()) setMsg(msg, "Room area: " + fmt(totalArea()) + " sq ft.", "ok");
+    else setMsg(msg, "");
+  }
+
+  function init() {
+    load();
+    $("room-length").value = room.length || "";
+    $("room-width").value = room.width || "";
+    $("room-budget").value = room.budget || "";
+    $("currency").value = room.currency || "₹";
+    ["room-length", "room-width", "room-budget", "currency"].forEach(function (id) {
+      $(id).addEventListener("input", onRoomInput);
+      $(id).addEventListener("change", function () { onRoomInput(); renderList(); });
+    });
+    $("add-btn").addEventListener("click", addItem);
+    ["item-name", "item-length", "item-width", "item-price"].forEach(function (id) {
+      $(id).addEventListener("keydown", function (e) { if (e.key === "Enter") addItem(); });
+    });
+    $("copy-btn").addEventListener("click", copyList);
+    $("clear-btn").addEventListener("click", function () {
+      if (!items.length) return;
+      items = []; save(); refresh(); $("export-box").classList.add("hidden"); setMsg($("list-msg"), "Checklist cleared.", "ok");
+    });
+    readRoom();
+    if (roomReady()) setMsg($("room-msg"), "Room area: " + fmt(totalArea()) + " sq ft.", "ok");
+    refresh();
+  }
+  init();
+})();
+</script>
+</body>
+</html>
